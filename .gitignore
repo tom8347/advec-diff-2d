@@ -1,0 +1,32 @@
+# Nix
+flake.lock
+.direnv/
+result
+result-*
+
+# Claude
+.claude/
+
+# Build outputs
+build/
+*.o
+*.mod
+*.a
+*.so
+*.so.*
+*.dylib
+
+# Binaries (no extension, executable)
+advecdiff
+
+# Output/data files
+output/
+*.dat
+*.csv
+*.nc
+
+# Editor
+*.swp
+*.swo
+*~
+.DS_Store
