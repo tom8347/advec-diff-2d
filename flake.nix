@@ -6,49 +6,60 @@
 
   outputs = { self, nixpkgs }:
   let
-    system = "x86_64-linux";
-    pkgs = import nixpkgs { inherit system; };
-    py = pkgs.python3.withPackages (ps: with ps; [
-      numpy
-      matplotlib
-      scipy
-      mpi4py
-      ipython
-      vtk
-      pynvim
-      python-lsp-server
-      pylsp-mypy
-      pylsp-rope
-      pyqt6
-    ]);
+    systems = [ "x86_64-linux" "aarch64-darwin" "x86_64-darwin" ];
+    forAllSystems = nixpkgs.lib.genAttrs systems;
   in
   {
-    devShells.${system}.default = pkgs.mkShell {
-      packages = [
-        pkgs.gfortran
-        pkgs.openmpi
-        pkgs.fortls
-        py
+    devShells = forAllSystems (system:
+    let
+      pkgs = import nixpkgs { inherit system; };
+      isDarwin = pkgs.stdenv.isDarwin;
 
-        # nice-to-haves (optional; include if you want them available even if your base system changes)
-        pkgs.gnumake
-        pkgs.pkg-config
+      py = pkgs.python3.withPackages (ps: with ps; [
+        numpy
+        matplotlib
+        scipy
+        mpi4py
+        ipython
+        pynvim
+        python-lsp-server
+        pylsp-mypy
+        pylsp-rope
+        pyqt6
+      ] ++ pkgs.lib.optionals (!isDarwin) [
+        # vtk nixpkg is Linux-only; install manually on macOS if needed
+        vtk
+      ]);
+    in
+    {
+      default = pkgs.mkShell {
+        packages = [
+          pkgs.gfortran
+          pkgs.openmpi
+          pkgs.fortls
+          py
+          pkgs.gnumake
+          pkgs.pkg-config
+        ] ++ pkgs.lib.optionals (!isDarwin) [
+          # Wayland Qt plugin only needed on Linux
+          pkgs.qt6.qtwayland
+        ];
 
-        # neede for native wayland qt
-        pkgs.qt6.qtwayland
-      ];
+        shellHook = ''
+          ${if isDarwin then ''
+            # Use the native macOS matplotlib backend
+            export MPLBACKEND=MacOSX
+          '' else ''
+            export MPLBACKEND=QtAgg
+            export QT_QPA_PLATFORM=wayland
+          ''}
 
-      shellHook = ''
-
-        # Force Matplotlib to use Qt and force Qt to use Wayland
-        export MPLBACKEND=QtAgg
-        export QT_QPA_PLATFORM=wayland
-
-        echo "Fortran:  $(gfortran --version | head -n1)"
-        echo "MPI:      $(mpirun --version | head -n1)"
-        echo "mpifort:  $(command -v mpifort || command -v mpif90)"
-        echo "Python:   $(python --version)"
-      '';
-    };
+          echo "Fortran:  $(gfortran --version | head -n1)"
+          echo "MPI:      $(mpirun --version | head -n1)"
+          echo "mpifort:  $(command -v mpifort || command -v mpif90)"
+          echo "Python:   $(python --version)"
+        '';
+      };
+    });
   };
 }
