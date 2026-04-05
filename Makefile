@@ -1,6 +1,10 @@
 FC      = mpifort
 FFLAGS  = -Wall -Wextra -O2 -fimplicit-none -fcheck=all
 
+# Nix injects C-only flags (e.g. -fmacro-prefix-map) via NIX_CFLAGS_COMPILE,
+# which gfortran doesn't understand. Unexport it so it never reaches the compiler.
+unexport NIX_CFLAGS_COMPILE
+
 SRCDIR  = src
 BLDDIR  = build
 BIN     = $(BLDDIR)/advecdiff
@@ -37,6 +41,6 @@ clean:
 
 run: $(BIN)
 	mkdir -p output
-	mpirun -np 4 $(BIN)
+	mpirun -np 6 $(BIN)
 
 .PHONY: all clean run
